@@ -7,7 +7,7 @@ name = "hcai-discover-utils"
 authors = [
     {name = "Dominik Schiller", email = "dominik.schiller@uni-a.de"}
 ]
-description = "This repository contains utility functions and interfaces that can be used to interact with the NOVA annotation tool."
+description = "This repository contains utility functions and interfaces that can be used to interact with the DISCOVER framework."
 readme = "README.md"
 requires-python = ">=3.9"
 keywords = ["NOVA", "utility", "annotation"]
@@ -51,7 +51,7 @@ pyav = ["pyav"]
 exclude = ["*tests*"]  # exclude packages matching these glob patterns (empty by default)
 
 [tool.setuptools.dynamic]
-version = {attr = "nova_utils.__version__"}
+version = {attr = "discover_utils.__version__"}
 
 [project.urls]
 Documentation = "https://hcmlab.github.io/discover-utils/docbuild/"

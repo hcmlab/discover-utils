@@ -265,7 +265,7 @@ class DatasetIterator(DatasetManager):
 
                         else:
                             print(f'Error retreiving data for window {window_info} in stream {k}. Exception caught when retreiving sample. Returning NaN values: {e}')
-                        data_for_window[k] = np.NAN
+                        data_for_window[k] = np.nan
 
                     # TODO pad continuous annotations
                     # Apply padding

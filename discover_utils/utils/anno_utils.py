@@ -115,7 +115,7 @@ def label_is_garbage(label_id, garbage_label_id):
     return False
 
 
-def data_contains_garbage(data: Union[np.ndarray, int], garbage_label_id: object = np.NAN):
+def data_contains_garbage(data: Union[np.ndarray, int], garbage_label_id: object = np.nan):
     """
     Check if a data array contains garbage values.
 

@@ -200,7 +200,7 @@ class Annotation(DynamicData):
         **kwargs: Arbitrary keyword arguments.
     """
 
-    GARBAGE_LABEL_ID = np.NAN
+    GARBAGE_LABEL_ID = np.nan
 
     def __init__(
         self,
@@ -342,7 +342,7 @@ class FreeAnnotation(Annotation):
         scheme (FreeAnnotationScheme): The free annotation scheme used for the data.
     """
 
-    NOVA_GARBAGE_LABEL_VALUE = np.NAN
+    NOVA_GARBAGE_LABEL_VALUE = np.nan
 
     def __init__(self, scheme: FreeAnnotationScheme, data: np.ndarray = None, **kwargs):
         """
@@ -423,7 +423,7 @@ class ContinuousAnnotation(Annotation):
         **kwargs: Arbitrary keyword arguments.
     """
 
-    NOVA_GARBAGE_LABEL_VALUE = np.NAN
+    NOVA_GARBAGE_LABEL_VALUE = np.nan
     MISSING_DATA_LABEL_VALUE = sys.float_info.min
 
     def __init__(

@@ -3,7 +3,7 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../..'))
 import discover_utils
-%sys.path.insert(0, os.path.abspath('../../discover_utils/'))
+#sys.path.insert(0, os.path.abspath('../../discover_utils/'))
 
 # Configuration file for the Sphinx documentation builder.
 #

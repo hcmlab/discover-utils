@@ -1,7 +1,9 @@
 import os
 import sys
+sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../..'))
 import discover_utils
-sys.path.insert(0, os.path.abspath('../../discover_utils/'))
+%sys.path.insert(0, os.path.abspath('../../discover_utils/'))
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -11,7 +13,7 @@ sys.path.insert(0, os.path.abspath('../../discover_utils/'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'NOVA-Utils'
+project = 'DISCOVER-Utils'
 copyright = '2023, Dominik Schiller'
 author = 'Dominik Schiller'
 release = discover_utils.__version__

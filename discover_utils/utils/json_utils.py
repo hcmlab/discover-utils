@@ -200,6 +200,7 @@ class TrainerEncoder(json.JSONEncoder):
                 "meta_uri": json.dumps(obj.meta_uri, cls=URIEncoder),
                 "meta_description": obj.meta_description,
                 "meta_is_iterable": obj.meta_is_iterable,
+                "meta_enable_post_process": obj.meta_enable_post_process,
                 "meta_category": obj.meta_category,
                 "ssi_v": obj.ssi_v,
                 "xml_version": obj.xml_version,
@@ -210,9 +211,9 @@ if __name__ == '__main__':
     from pathlib import Path
     import os
     import dotenv
-    dotenv.load_dotenv()
+    dotenv.load_dotenv('../.env')
     data_dir = Path(os.getenv("DISCOVER_DATA_DIR"))
-    trainer_in_fp = data_dir / "test.trainer"
+    trainer_in_fp = data_dir / "Test_Files" / "test.trainer"
 
     trainer = Trainer()
     trainer.load_from_file(trainer_in_fp)

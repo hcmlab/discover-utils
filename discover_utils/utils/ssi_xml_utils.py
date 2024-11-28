@@ -124,6 +124,7 @@ class Trainer:
         meta_left_ctx (int): Left context size for the Trainer.
         meta_balance (str): Balance type for the Trainer.
         meta_is_iterable (str): Bool that indicates if the module requires data processing via nova-server iterator.
+        meta_enable_post_process (bool): Bool that indicates if the output specific postprocessing like packing or smoothing of the output should be enabled.
         meta_is_processable (str): Bool that indicates if the implements the Processor interface.
         meta_is_trainable (str): Bool that indicates if the implements the Trainer interface.
         meta_is_explainable (str): Bool that indicates if the module supports the Explain
@@ -149,6 +150,7 @@ class Trainer:
         register (list, optional): List of registered items. Default is None.
         info_trained (bool, optional): Indicates if the model is trained. Default is False.
         meta_is_iterable (str, optional): Bool that indicates if the module requires data processing via nova-server iterator. Defaults to False.
+        meta_enable_post_process (bool, optional): Bool that indicates if the output specific postprocessing like packing or smoothing of the output should be enabled. Defaults to True.
         meta_is_processable (str, optional): Bool that indicates if the implements the Processor interface. Defaults to True.
         meta_is_trainable (str, optional): Bool that indicates if the implements the Trainer interface. Defaults to False.
         meta_is_explainable (str, optional): Bool that indicates if the module supports the Explain. Defaults to False.
@@ -192,6 +194,7 @@ class Trainer:
             meta_is_processable: bool = True,
             meta_is_trainable: bool = False,
             meta_is_explainable: bool = False,
+            meta_enable_post_process: bool = True,
             meta_io: list[ModelIO] = None,
             meta_uri: list[URI] = None,
             ssi_v="5",
@@ -225,6 +228,7 @@ class Trainer:
         self.meta_is_explainable = meta_is_explainable
         self.meta_is_iterable = meta_is_iterable
         self.meta_is_processable = meta_is_processable
+        self.meta_enable_post_process = meta_enable_post_process
         self.meta_io = meta_io if meta_io is not None else []
         self.meta_uri = meta_uri if meta_uri is not None else []
         self.ssi_v = ssi_v
@@ -265,6 +269,8 @@ class Trainer:
             self.meta_is_processable = string_to_bool(meta.get("is_processable", default=self.meta_is_processable))
             self.meta_is_trainable = string_to_bool(meta.get("is_trainable", default=self.meta_is_trainable))
             self.meta_is_explainable = string_to_bool(meta.get("is_explainable", default=self.meta_is_explainable))
+            self.meta_is_explainable = string_to_bool(meta.get("is_explainable", default=self.meta_is_explainable))
+            self.meta_enable_post_process = string_to_bool(meta.get("enable_post_process", default=self.meta_enable_post_process))
 
             for io_tag in meta.findall("io"):
                 self.meta_io.append(
@@ -319,7 +325,8 @@ class Trainer:
             description=self.meta_description,
             meta_is_iterable=str(self.meta_is_iterable),
             meta_is_trainable=str(self.meta_is_trainable),
-            meta_is_explainable=str(self.meta_is_explainable)
+            meta_is_explainable=str(self.meta_is_explainable),
+            meta_enable_post_process=str(self.meta_enable_post_process)
         )
 
         io: ModelIO
@@ -574,7 +581,7 @@ if __name__ == "__main__":
     from pathlib import Path
     import os
     import dotenv
-    dotenv.load_dotenv()
+    dotenv.load_dotenv('../.env')
     data_dir = Path(os.getenv("DISCOVER_DATA_DIR"))
     out_dir = Path(os.getenv("DISCOVER_TEST_DIR"))
 

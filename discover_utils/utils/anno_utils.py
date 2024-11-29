@@ -238,7 +238,7 @@ def pack_remove(data : np.ndarray[LabelDType.DISCRETE], min_gap: int = 0, min_du
     Does only work with discrete label data.
 
     Args:
-        max_time_gap (int): The minimum amount of time between consecutive samples to be seen as two different samples. Defaults to 0.
+        min_gap (int): The minimum amount of time between consecutive samples to be seen as two different samples. Defaults to 0.
         min_dur (int): Minimum duration of one sample Defaults to 0.
 
     Returns:

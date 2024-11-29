@@ -190,7 +190,8 @@ def main(args):
             session_manager = provider.sessions[session]['manager']
             for io_id, data_object in data_output.items():
                 if isinstance(data_object, DiscreteAnnotation):
-                    data_object.data = pack_remove(data_object.data, min_gap=anno_min_gap, min_dur=anno_min_dur)
+                    if not (anno_min_dur == 0 and anno_min_gap == 0):
+                        data_object.data = pack_remove(data_object.data, min_gap=anno_min_gap, min_dur=anno_min_dur)
                 session_manager.output_data_templates[io_id] = data_object
 
             provider.save()

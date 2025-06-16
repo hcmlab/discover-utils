@@ -1,6 +1,7 @@
 name: Upload Python Package Release
 
 on:
+  workflow_dispatch:
   push:
     tags:        
       - '*'           

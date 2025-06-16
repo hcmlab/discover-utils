@@ -14,6 +14,7 @@ from typing import Union
 import numpy as np
 from bson.objectid import ObjectId
 from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.results import InsertOneResult, UpdateResult
 
 from discover_utils.data.annotation import (
@@ -171,12 +172,29 @@ class NovaDBHandler:
         Connects to the MongoDB server.
 
         Args:
-            db_host (str): IP address of the MongoDB server.
+            db_host (str): IP address or URI of the MongoDB server.
             db_port (int): Port number of the MongoDB server.
             db_user (str): Username for authentication.
             db_password (str): Password for authentication.
         """
-        self._client = MongoClient(host=db_host, port=db_port, username=db_user, password=db_password)
+        
+        # prepend prefix mongodb
+        prefix = 'mongodb://'
+        if db_host[:len(prefix)] != prefix:
+            db_host = prefix+db_host
+        
+        # try (invalid) TLS
+        try:
+            self._client = MongoClient(host=db_host, tls=True, tlsAllowInvalidCertificates=True, port=db_port, username=db_user, password=db_password, serverSelectionTimeoutMS=3000)
+            self._client.admin.command('ping')  # force lazy connect
+        except ServerSelectionTimeoutError:
+            # try without TLS
+            try:
+                self._client = MongoClient(host=db_host, port=db_port, username=db_user, password=db_password, serverSelectionTimeoutMS=3000)
+                self._client.admin.command('ping')  # force lazy connect
+            except ServerSelectionTimeoutError:
+                print("All connection attempts failed.")
+           
         self._ip = db_host
         self._port = db_port
         self._user = db_user

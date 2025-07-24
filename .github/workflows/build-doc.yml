@@ -10,8 +10,8 @@ jobs:
       - uses: actions/setup-python@v3
       - name: Install dependencies
         run: |
-          pip install sphinx sphinx_rtd_theme
-          pip install -e .
+          pip install sphinx sphinx_rtd_theme myst-parser sphinx-argparse
+          pip install -e . --no-deps
       - name: Sphinx build
         run: |
           sphinx-build docs/docsource docs/docbuild

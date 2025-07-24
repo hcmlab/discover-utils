@@ -86,7 +86,7 @@ def parse_src_tag(desc):
         raise ValueError(f'Invalid value for data source {desc["src"]}')
     return origin, super_type, sub_type, specific_type
 
-def infere_dtype(super_type: SuperType, sub_type: SubType):
+def infer_dtype(super_type: SuperType, sub_type: SubType):
     """Infers data type as specified in nova_utils.data from super_type and sub_type"""
     if super_type == SuperType.TEXT:
         return Text
@@ -95,7 +95,7 @@ def infere_dtype(super_type: SuperType, sub_type: SubType):
     if super_type == SuperType.STREAM:
         if sub_type == SubType.SSIStream:
             return SSIStream
-        if super_type == SubType.AUDIO:
+        if sub_type == SubType.AUDIO:
             return Audio
         if sub_type == SubType.VIDEO:
             return Video

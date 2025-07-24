@@ -16,7 +16,7 @@ from discover_utils.data.handler import (
 from discover_utils.data.stream import SSIStream, Video, Audio, Stream
 from  discover_utils.data.static import Image, Text
 from discover_utils.utils.request_utils import Origin, SuperType, SubType, parse_src_tag, data_description_to_string, \
-    infere_dtype
+    infer_dtype
 
 
 class SessionManager:
@@ -201,7 +201,7 @@ class SessionManager:
                     data = handler.load(url=desc["uri"])
                 # REQUEST
                 elif src == Origin.REQUEST:
-                    target_dtype = infere_dtype(super_dtype, sub_dtype)
+                    target_dtype = infer_dtype(super_dtype, sub_dtype)
                     handler = request_handler.RequestHandler()
                     data = handler.load(data=desc.get("data"), dtype=target_dtype, header_only=header_only)
 

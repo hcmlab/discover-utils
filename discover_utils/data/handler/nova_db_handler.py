@@ -585,15 +585,25 @@ class AnnotationHandler(IHandler, NovaDBHandler):
             #scheme_classes = {l["id"]: l["name"] for l in scheme_doc["labels"]}
             scheme_classes = {l["id"]: l for l in scheme_doc["labels"]}
             if not header_only:
-                anno_data = np.array(
-                    [
-                        (x["from"], x["to"], x["id"], x["conf"])
-                        for x in anno_data_doc["labels"]
-                    ],
-                    dtype=SSILabelDType.DISCRETE.value,
-                )
-                anno_data = convert_ssi_to_label_dtype(anno_data, SchemeType.DISCRETE)
-                anno_duration = anno_data[-1]["to"] if anno_data.size != 0 else 0
+                    anno_data = []
+                    meta_data = []
+                    for x in anno_data_doc['labels']:
+                        anno_data.append((x["from"], x["to"], x["id"], x["conf"]))
+                        attribute = x.get('meta', '')  # empty dict instead of empty string
+                        if attribute == '':
+                            attribute = {}
+                        else:
+                            attribute = attribute[len('attributes:'):]  # parse attributes string
+                            for y in scheme_attributes:
+                                attribute = attribute.replace(y['name'], f'"{y['name']}"')  # malformed dict/json
+                            attribute = eval(attribute)  # interpretable as dict
+                            for k, v in attribute.items():
+                                attribute[k] = v.pop()  # attribute ids are sets
+                        meta_data.append(attribute)
+                    
+                    anno_data = np.array(anno_data, dtype=SSILabelDType.DISCRETE.value)
+                    anno_data = convert_ssi_to_label_dtype(anno_data, SchemeType.DISCRETE)
+                    anno_duration = anno_data[-1]["to"] if anno_data.size != 0 else 0
 
             anno_scheme = DiscreteAnnotationScheme(name=scheme, classes=scheme_classes)
             annotation = DiscreteAnnotation(
@@ -605,6 +615,11 @@ class AnnotationHandler(IHandler, NovaDBHandler):
                 annotator=annotator,
                 duration=anno_duration
             )
+            annotation.meta_data.description = scheme_description
+            annotation.meta_data.examples = scheme_examples
+            if scheme_attributes:
+                annotation.meta_data.attributes = scheme_attributes
+                annotation.meta_data.attribute_values = meta_data
 
         # continuous scheme
         elif scheme_type == SchemeType.CONTINUOUS.name:

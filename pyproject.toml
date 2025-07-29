@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hcai-discover-utils"
 authors = [
-    {name = "Dominik Schiller", email = "dominik.schiller@uni-a.de"}
+    {name = "Dominik Schiller", email = "dominik.schiller@uni-a.de"},
+    {name = "Tobias Hallmen", email = "tobias.hallmen@uni-a.de"}
 ]
 description = "This repository contains utility functions and interfaces that can be used to interact with the DISCOVER framework."
 readme = "README.md"

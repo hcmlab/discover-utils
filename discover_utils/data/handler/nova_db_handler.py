@@ -595,7 +595,7 @@ class AnnotationHandler(IHandler, NovaDBHandler):
                         else:
                             attribute = attribute[len('attributes:'):]  # parse attributes string
                             for y in scheme_attributes:
-                                attribute = attribute.replace(y['name'], f'"{y['name']}"')  # malformed dict/json
+                                attribute = attribute.replace(y['name'], f'"{y["name"]}"')  # malformed dict/json
                             attribute = eval(attribute)  # interpretable as dict
                             for k, v in attribute.items():
                                 attribute[k] = v.pop()  # attribute ids are sets

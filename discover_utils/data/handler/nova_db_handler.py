@@ -594,11 +594,22 @@ class AnnotationHandler(IHandler, NovaDBHandler):
                             attribute = {}
                         else:
                             attribute = attribute[len('attributes:'):]  # parse attributes string
-                            for y in scheme_attributes:
-                                attribute = attribute.replace(y['name'], f'"{y["name"]}"')  # malformed dict/json
-                            attribute = eval(attribute)  # interpretable as dict
-                            for k, v in attribute.items():
-                                attribute[k] = v.pop()  # attribute ids are sets
+                            if not scheme_attributes:
+                                raise ValueError(f"Annotation has attribute values but scheme '{scheme}' has no defined attributes. Please update the annotation scheme to include attribute definitions.")
+                            # Fix malformed dict/json by quoting keys and values
+                            import re
+                            import json
+                            
+                            def escape_and_quote(match):
+                                key = match.group(1)
+                                value = match.group(2)
+                                # Use json.dumps to properly escape the value
+                                escaped_value = json.dumps(value)
+                                return f'"{key}":{escaped_value}'
+                            
+                            # Quote key:{value} -> "key":"properly_escaped_value"
+                            attribute = re.sub(r'([a-zA-Z_]\w*):\{([^}]+)\}', escape_and_quote, attribute)
+                            attribute = json.loads(attribute)  # Use json.loads instead of eval
                         meta_data.append(attribute)
                     
                     anno_data = np.array(anno_data, dtype=SSILabelDType.DISCRETE.value)

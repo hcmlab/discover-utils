@@ -15,7 +15,7 @@ import json
 # CONTEXT Parser
 # Parser for NOVA database connection
 nova_db_parser = argparse.ArgumentParser(
-    description="Parse Information required to connect to the NOVA-DB", add_help=False
+    description="Parse Information required to connect to the NOVA-DB", add_help=False, fromfile_prefix_chars='@'
 )
 nova_db_parser.add_argument(
     "--db_host", type=str, help="The ip-address of the NOVA-DB server"
@@ -42,7 +42,7 @@ nova_db_parser.add_argument(
 # Parser for request handling
 request_parser = argparse.ArgumentParser(
     description="Parse Information required for the caller of the module to retrieve processed information",
-    add_help=False,
+    add_help=False, fromfile_prefix_chars='@',
 )
 request_parser.add_argument(
     "--shared_dir",
@@ -57,7 +57,7 @@ request_parser.add_argument(
 
 # Parser for DatasetManager
 dm_parser = argparse.ArgumentParser(
-    description="Parse Information required to create a Dataset Manager", add_help=False
+    description="Parse Information required to create a Dataset Manager", add_help=False, fromfile_prefix_chars='@'
 )
 dm_parser.add_argument(
     "--dataset",
@@ -81,7 +81,7 @@ dm_parser.add_argument(
 
 # Parser for NOVA iterator
 nova_iterator_parser = argparse.ArgumentParser(
-    description="Parse Information required to create a NovaIterator", add_help=False
+    description="Parse Information required to create a NovaIterator", add_help=False, fromfile_prefix_chars='@'
 )
 nova_iterator_parser.add_argument(
     "--frame_size",
@@ -125,7 +125,7 @@ nova_iterator_parser.add_argument(
 # Parser for file handling
 io_parser = argparse.ArgumentParser(
     description="Parse Information that modifies input / output parameters",
-    add_help=False,
+    add_help=False, fromfile_prefix_chars='@',
 )
 io_parser.add_argument(
     "--video_backend",
@@ -138,7 +138,7 @@ io_parser.add_argument(
 # Parser for NOVA-Server module
 nova_server_module_parser = argparse.ArgumentParser(
     description="Parse Information required to execute a NOVA-Server module",
-    add_help=False,
+    add_help=False, fromfile_prefix_chars='@',
 )
 nova_server_module_parser.add_argument(
     "--cml_dir", type=str, help="CML base directory for the NOVA-Server module"

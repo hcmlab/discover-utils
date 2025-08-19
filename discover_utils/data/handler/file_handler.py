@@ -769,6 +769,8 @@ class _VideoFileHandler(IHandler):
             raise FileNotFoundError(fp)
         # meta information
         metadata = self._get_video_meta(fp)
+        if not metadata.get("streams") or len(metadata["streams"]) == 0:
+            raise ValueError(f"Video file corrupted or contains no video streams: {fp}")
         metadata = metadata["streams"][0]
         _width = metadata.get("width")
         _height = metadata.get("height")

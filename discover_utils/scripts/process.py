@@ -54,6 +54,7 @@ parser = argparse.ArgumentParser(
              nova_iterator_parser,
              nova_server_module_parser,
              io_parser],
+    fromfile_prefix_chars='@',
 )
 parser.add_argument(
     "--trainer_file_path",
@@ -172,15 +173,16 @@ def main(args):
     print("Data managers initialized")
 
     # Iterate over all sessions
-    for provider in single_session_data_provider:
+    total_sessions = len(single_session_data_provider)
+    for session_idx, provider in enumerate(single_session_data_provider):
         session = provider.session_names[0]
         #data_provider = provider
         try:
             if isinstance(provider, DatasetManager):
                 provider.load()
 
-            # Data processing
-            print(f"Process session {session}...")
+            # Data processing with progress information
+            print(f"Processing session ({session_idx + 1}/{total_sessions}): {session}...")
 
             data_processed = processor.process_data(provider)
             data_output = processor.to_output(data_processed)
@@ -194,11 +196,12 @@ def main(args):
                 session_manager.output_data_templates[io_id] = data_object
 
             provider.save()
+            print(f"Completed session ({session_idx + 1}/{total_sessions}): {session}...")
 
         except Exception as e:
             traceback.print_exc()
             print(
-                f"\tProcessor exited with error: '{str(e)}'. Continuing with next session."
+                f"\tProcessor exited with error: '{str(e)}'.\nContinuing with next session ({session_idx + 1}/{total_sessions})."
             )
             caught_ex = True
             continue

@@ -6,6 +6,7 @@ Date:
     18.8.2023
 """
 
+import os
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -183,17 +184,34 @@ class NovaDBHandler:
         if db_host[:len(prefix)] != prefix:
             db_host = prefix+db_host
         
-        # try (invalid) TLS
-        try:
-            self._client = MongoClient(host=db_host, tls=True, tlsAllowInvalidCertificates=True, port=db_port, username=db_user, password=db_password, serverSelectionTimeoutMS=3000)
-            self._client.admin.command('ping')  # force lazy connect
-        except ServerSelectionTimeoutError:
-            # try without TLS
+        # Check environment variable for TLS usage
+        discover_use_tls = os.getenv('DISCOVER_USE_TLS', '').lower()
+        if discover_use_tls in ('true', '1', 'yes'):
+            # Use TLS when explicitly enabled
+            try:
+                self._client = MongoClient(host=db_host, tls=True, tlsAllowInvalidCertificates=True, port=db_port, username=db_user, password=db_password, serverSelectionTimeoutMS=3000)
+                self._client.admin.command('ping')  # force lazy connect
+            except ServerSelectionTimeoutError:
+                print("MongoDB TLS connection attempt failed.")
+        elif discover_use_tls in ('false', '0', 'no'):
+            # Don't use TLS when explicitly disabled
             try:
                 self._client = MongoClient(host=db_host, port=db_port, username=db_user, password=db_password, serverSelectionTimeoutMS=3000)
                 self._client.admin.command('ping')  # force lazy connect
             except ServerSelectionTimeoutError:
-                print("All connection attempts failed.")
+                print("MongoDB non-TLS connection attempt failed.")
+        else:
+            # Fall back to original behavior when environment variable is not set or invalid
+            try:
+                self._client = MongoClient(host=db_host, tls=True, tlsAllowInvalidCertificates=True, port=db_port, username=db_user, password=db_password, serverSelectionTimeoutMS=3000)
+                self._client.admin.command('ping')  # force lazy connect
+            except ServerSelectionTimeoutError:
+                # try without TLS
+                try:
+                    self._client = MongoClient(host=db_host, port=db_port, username=db_user, password=db_password, serverSelectionTimeoutMS=3000)
+                    self._client.admin.command('ping')  # force lazy connect
+                except ServerSelectionTimeoutError:
+                    print("All MongoDB connection attempts failed.")
            
         self._ip = db_host
         self._port = db_port
@@ -579,6 +597,7 @@ class AnnotationHandler(IHandler, NovaDBHandler):
 
         anno_data = None
         anno_duration = 0
+        meta_data = None
 
         # discrete scheme
         if scheme_type == SchemeType.DISCRETE.name:
@@ -595,7 +614,7 @@ class AnnotationHandler(IHandler, NovaDBHandler):
                         else:
                             attribute = attribute[len('attributes:'):]  # parse attributes string
                             if not scheme_attributes:
-                                raise ValueError(f"Annotation has attribute values but scheme '{scheme}' has no defined attributes. Please update the annotation scheme to include attribute definitions.")
+                                raise ValueError(f"Annotation has attribute values '{attribute}' but scheme '{scheme}' has no defined attributes. Please update the annotation scheme to include attribute definitions.")
                             # Fix malformed dict/json by quoting keys and values
                             import re
                             import json
@@ -608,7 +627,7 @@ class AnnotationHandler(IHandler, NovaDBHandler):
                                 return f'"{key}":{escaped_value}'
                             
                             # Quote key:{value} -> "key":"properly_escaped_value"
-                            attribute = re.sub(r'([a-zA-Z_]\w*):\{([^}]+)\}', escape_and_quote, attribute)
+                            attribute = re.sub(r'([^:,{}]+):\{([^}]+)\}', escape_and_quote, attribute)
                             attribute = json.loads(attribute)  # Use json.loads instead of eval
                         meta_data.append(attribute)
                     

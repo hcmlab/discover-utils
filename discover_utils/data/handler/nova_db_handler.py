@@ -618,19 +618,41 @@ class AnnotationHandler(IHandler, NovaDBHandler):
                             # Fix malformed dict/json by quoting keys and values
                             import re
                             import json
-                            
+
                             def escape_and_quote(match):
                                 key = match.group(1)
                                 value = match.group(2)
                                 # Use json.dumps to properly escape the value
                                 escaped_value = json.dumps(value)
                                 return f'"{key}":{escaped_value}'
-                            
+
                             # Quote key:{value} -> "key":"properly_escaped_value"
                             attribute = re.sub(r'([^:,{}]+):\{([^}]+)\}', escape_and_quote, attribute)
                             attribute = json.loads(attribute)  # Use json.loads instead of eval
                         meta_data.append(attribute)
-                    
+
+                    # Convert row-wise attribute format to column-wise format for compatibility
+                    if meta_data and scheme_attributes:
+                        # Collect all unique attribute keys from schema
+                        all_keys = {attr['name'] for attr in scheme_attributes}
+
+                        # Convert from row-wise list of dicts to column-wise dict of lists
+                        column_wise_attributes = {}
+                        for key in all_keys:
+                            column_wise_attributes[key] = []
+                            for row_attributes in meta_data:
+                                # Use None as default for missing attributes in empty rows
+                                column_wise_attributes[key].append(row_attributes.get(key, None))
+
+                        meta_data = column_wise_attributes
+                    elif meta_data:
+                        # If we have meta_data but no scheme_attributes, keep original format for now
+                        # This maintains backward compatibility
+                        pass
+                    else:
+                        # No attributes at all
+                        meta_data = None
+
                     anno_data = np.array(anno_data, dtype=SSILabelDType.DISCRETE.value)
                     anno_data = convert_ssi_to_label_dtype(anno_data, SchemeType.DISCRETE)
                     anno_duration = anno_data[-1]["to"] if anno_data.size != 0 else 0

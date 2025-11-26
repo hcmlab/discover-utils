@@ -184,20 +184,33 @@ def main(args):
             # Data processing with progress information
             print(f"Processing session ({session_idx + 1}/{total_sessions}): {session}...")
 
-            # Update progress in DISCOVER via HTTP
+            # Update progress in DISCOVER via HTTP/HTTPS
             try:
                 job_key = os.environ.get('DISCOVER_JOB_KEY')
                 discover_host = os.environ.get('DISCOVER_HOST', 'localhost')
                 discover_port = os.environ.get('DISCOVER_PORT', '8080')
+                use_tls = os.environ.get('DISCOVER_USE_TLS', 'false').lower() == 'true'
+
+                # Convert 0.0.0.0 to localhost for client requests
+                if discover_host == '0.0.0.0':
+                    discover_host = 'localhost'
 
                 if job_key:
                     import requests
-                    url = f"http://{discover_host}:{discover_port}/api/update_progress"
+                    import warnings
+                    from urllib3.exceptions import InsecureRequestWarning
+
+                    # Suppress InsecureRequestWarning for self-signed certificates
+                    warnings.filterwarnings('ignore', category=InsecureRequestWarning)
+
+                    protocol = 'https' if use_tls else 'http'
+                    url = f"{protocol}://{discover_host}:{discover_port}/api/update_progress"
                     payload = {
                         "job_key": job_key,
                         "progress": f"{session_idx + 1}/{total_sessions}"
                     }
-                    requests.post(url, json=payload, timeout=1)
+                    # Disable SSL verification for self-signed certificates
+                    requests.post(url, json=payload, timeout=1, verify=False)
             except Exception:
                 pass  # Fail silently if progress update fails
 

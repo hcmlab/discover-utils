@@ -184,6 +184,23 @@ def main(args):
             # Data processing with progress information
             print(f"Processing session ({session_idx + 1}/{total_sessions}): {session}...")
 
+            # Update progress in DISCOVER via HTTP
+            try:
+                job_key = os.environ.get('DISCOVER_JOB_KEY')
+                discover_host = os.environ.get('DISCOVER_HOST', 'localhost')
+                discover_port = os.environ.get('DISCOVER_PORT', '8080')
+
+                if job_key:
+                    import requests
+                    url = f"http://{discover_host}:{discover_port}/api/update_progress"
+                    payload = {
+                        "job_key": job_key,
+                        "progress": f"{session_idx + 1}/{total_sessions}"
+                    }
+                    requests.post(url, json=payload, timeout=1)
+            except Exception:
+                pass  # Fail silently if progress update fails
+
             data_processed = processor.process_data(provider)
             data_output = processor.to_output(data_processed)
 

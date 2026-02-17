@@ -51,13 +51,16 @@ def _hash_file(fpath, algorithm="sha256", chunk_size=65535):
     Args:
         fpath: path to the file being validated
         algorithm: hash algorithm, one of `'auto'`, `'sha256'`, or `'md5'`.
-            The default `'auto'` detects the hash algorithm in use.
+            The default `'sha256'` uses sha256.
+            Note: when 'auto' is passed as a string (not a hasher object),
+            it will default to md5 for legacy compatibility.
         chunk_size: Bytes to read at a time, important for large files.
 
     Returns:
         The file hash
     """
     if isinstance(algorithm, str):
+        # Note: we don't have file_hash here, so 'auto' will default to md5
         hasher = _resolve_hasher(algorithm)
     else:
         hasher = algorithm
@@ -147,6 +150,9 @@ def validate_file(fpath, file_hash, algorithm="auto", chunk_size=65535):
     Returns:
         Whether the file is valid
     """
+    # Normalize the expected hash by stripping whitespace and converting to lowercase
+    file_hash = str(file_hash).strip().lower()
+
     hasher = _resolve_hasher(algorithm, file_hash)
 
     if str(_hash_file(fpath, hasher, chunk_size)) == str(file_hash):
@@ -251,7 +257,7 @@ def get_file(
     if fpath.exists():
         # File found; verify integrity if a hash was provided.
         if file_hash:
-            if not validate_file(fpath, file_hash.lower(), algorithm=hash_algorithm):
+            if not validate_file(fpath, file_hash, algorithm=hash_algorithm):
                 print(
                     "A local file was found, but it seems to be "
                     "incomplete or outdated because the "

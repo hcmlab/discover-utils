@@ -5,7 +5,7 @@ Author:
 Date:
     20.09.2023
 
-This script performs generall data processing to extract either annotations to NOVA-Database or streams to disk using a provided nova-server module for inference.
+This script performs general data processing to extract either annotations to NOVA-Database or streams to disk using a provided DISCOVER module for inference.
 
 .. argparse::
    :module: discover_utils.scripts.process
@@ -47,7 +47,7 @@ from discover_utils.data.annotation import DiscreteAnnotation
 
 # Main parser for predict specific options
 parser = argparse.ArgumentParser(
-    description="Use a provided nova-server module for inference and save results to NOVA-DB",
+    description="Use a provided DISCOVER module for inference and save results to NOVA-DB",
     parents=[dm_parser,
              nova_db_parser,
              request_parser,

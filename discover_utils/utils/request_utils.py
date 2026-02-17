@@ -87,7 +87,7 @@ def parse_src_tag(desc):
     return origin, super_type, sub_type, specific_type
 
 def infer_dtype(super_type: SuperType, sub_type: SubType):
-    """Infers data type as specified in nova_utils.data from super_type and sub_type"""
+    """Infers data type as specified in discover_utils.data from super_type and sub_type"""
     if super_type == SuperType.TEXT:
         return Text
     if super_type == SuperType.IMAGE:

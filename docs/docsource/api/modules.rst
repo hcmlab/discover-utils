@@ -1,7 +1,7 @@
-nova_utils
-==========
+discover_utils
+==============
 
 .. toctree::
    :maxdepth: 8
 
-   nova_utils
+   discover_utils

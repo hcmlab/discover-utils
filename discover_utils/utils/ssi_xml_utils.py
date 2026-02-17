@@ -26,7 +26,7 @@ class ModelIO:
             ``"data_class"``
                      General data class. Either "annotation" or "stream"
             ``"data_type"``
-                     Type of the data_class. Matches classnames data type from nova_utils.data .
+                     Type of the data_class. Matches classnames data type from discover_utils.data .
                      "Video", "Audio", "SSIStream" for streams. "Discrete", "Free" or "Continuous" for annotations.
             ``"specific_data_type"``
                     Optional string identifier to specify either the annotation scheme or the type of feature. E.g. "transcript" or "Openface"
@@ -39,7 +39,7 @@ class ModelIO:
             ``"data_class"``
                      General data class. Either "annotation" or "stream"
             ``"data_type"``
-                     Type of the data_class. Matches classnames data type from nova_utils.data .
+                     Type of the data_class. Matches classnames data type from discover_utils.data .
                      "Video", "Audio", "SSIStream" for streams. "Discrete", "Free" or "Continuous" for annotations.
             ``"specific_data_type"``
                     Optional string identifier to specify either the annotation scheme or the type of feature. E.g. "transcript" or "Openface"
@@ -123,7 +123,7 @@ class Trainer:
         meta_right_ctx (int): Right context size for the Trainer.
         meta_left_ctx (int): Left context size for the Trainer.
         meta_balance (str): Balance type for the Trainer.
-        meta_is_iterable (str): Bool that indicates if the module requires data processing via nova-server iterator.
+        meta_is_iterable (str): Bool that indicates if the module requires data processing via DISCOVER iterator.
         meta_enable_post_process (bool): Bool that indicates if the output specific postprocessing like packing or smoothing of the output should be enabled.
         meta_is_processable (str): Bool that indicates if the implements the Processor interface.
         meta_is_trainable (str): Bool that indicates if the implements the Trainer interface.
@@ -149,7 +149,7 @@ class Trainer:
         streams (list, optional): List of stream information. Default is None.
         register (list, optional): List of registered items. Default is None.
         info_trained (bool, optional): Indicates if the model is trained. Default is False.
-        meta_is_iterable (str, optional): Bool that indicates if the module requires data processing via nova-server iterator. Defaults to False.
+        meta_is_iterable (str, optional): Bool that indicates if the module requires data processing via DISCOVER iterator. Defaults to False.
         meta_enable_post_process (bool, optional): Bool that indicates if the output specific postprocessing like packing or smoothing of the output should be enabled. Defaults to True.
         meta_is_processable (str, optional): Bool that indicates if the implements the Processor interface. Defaults to True.
         meta_is_trainable (str, optional): Bool that indicates if the implements the Trainer interface. Defaults to False.

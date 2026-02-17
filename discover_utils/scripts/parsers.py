@@ -135,28 +135,28 @@ io_parser.add_argument(
     help="The backend that is used to read video files",
 )
 
-# Parser for NOVA-Server module
+# Parser for DISCOVER module
 nova_server_module_parser = argparse.ArgumentParser(
-    description="Parse Information required to execute a NOVA-Server module",
+    description="Parse Information required to execute a DISCOVER module",
     add_help=False, fromfile_prefix_chars='@',
 )
 nova_server_module_parser.add_argument(
-    "--cml_dir", type=str, help="CML base directory for the NOVA-Server module"
+    "--cml_dir", type=str, help="CML base directory for the DISCOVER module"
 )
 nova_server_module_parser.add_argument(
-    "--cache_dir", type=str, help="Cache directory for the NOVA-Server module"
+    "--cache_dir", type=str, help="Cache directory for the DISCOVER module"
 )
 nova_server_module_parser.add_argument(
-    "--tmp_dir", type=str, help="tmp base directory for the NOVA-Server module"
+    "--tmp_dir", type=str, help="tmp base directory for the DISCOVER module"
 )
 nova_server_module_parser.add_argument(
     "--opt_str",
     type=str,
-    help="String containing dictionaries with key value pairs, setting the options for a NOVA-Server module",
+    help="String containing dictionaries with key value pairs, setting the options for a DISCOVER module",
 )
 
 nova_server_module_parser.add_argument(
     "--options",
     type=json.loads,
-    help="Json formatted String containing dictionaries with key value pairs, setting the options for a NOVA-Server module",
+    help="Json formatted String containing dictionaries with key value pairs, setting the options for a DISCOVER module",
 )

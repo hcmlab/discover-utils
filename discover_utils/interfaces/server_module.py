@@ -55,7 +55,7 @@ class Processor(ABC):
         return dataset_manager.sessions[current_session_name]['manager']
 
     def preprocess_sample(self, sample: dict):
-        """Preprocess data to convert between nova-server dataset iterator item to the raw model input as required in process_sample.
+        """Preprocess data to convert between DISCOVER dataset iterator item to the raw model input as required in process_sample.
 
         Args:
             sample :
@@ -160,7 +160,7 @@ class Extractor(Processor):
 
     @abstractmethod
     def to_stream(self, data: object) -> list[Stream]:
-        """Converts the return value from process_data() to data stream chunk that can be processed by nova-server.
+        """Converts the return value from process_data() to data stream chunk that can be processed by DISCOVER.
 
         Args:
             data (object): The data as returned by the process_data function of the Processor class

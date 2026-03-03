@@ -973,7 +973,7 @@ class StreamHandler(IHandler, NovaDBHandler):
             port=self._port,
             user=self._user,
             name=result.get("name"),
-            dim_labels=result.get("dimLabels"),
+            dim_labels=result.get("dimlabels"),
             file_ext=result.get("fileExt"),
             is_valid=result.get("isValid"),
             stream_document_id=result.get("_id"),
@@ -1042,6 +1042,9 @@ class StreamHandler(IHandler, NovaDBHandler):
         meta_data: StreamMetaData = stream.meta_data
 
         # write db entry
+        # NOTE: "dimlabels" is lowercase to match NOVA's DatabaseHandler.cs convention.
+        # Other fields use camelCase (fileExt, isValid) — this inconsistency originates in NOVA.
+        # If NOVA compatibility is ever dropped, consider normalizing all field names, eg snake_case.
         stream_document = {
             "fileExt": file_ext.strip('.'),
             "name": name,

@@ -33,10 +33,16 @@ def resolve_file_uri(desc: dict, dataset: str, session: str) -> Path:
     Returns:
         Path: Resolved file path.
     """
-    uri = desc.get("uri_template", desc.get("uri"))
-    if uri is None:
-        raise KeyError(f"Data description has neither 'uri_template' nor 'uri': {desc}")
-    return Path(str(uri).format(dataset=dataset or "", session=session or ""))
+    template = desc.get("uri_template")
+    if template is not None:
+        if "{dataset}" in template and not dataset:
+            raise ValueError(f"uri_template references {{dataset}} but no dataset was provided: {template}")
+        if "{session}" in template and not session:
+            raise ValueError(f"uri_template references {{session}} but no session was provided: {template}")
+        return Path(template.format(dataset=dataset, session=session))
+    if "uri" in desc:
+        return Path(desc["uri"])
+    raise KeyError(f"Data description has neither 'uri_template' nor 'uri': {desc}")
 
 
 class SessionManager:

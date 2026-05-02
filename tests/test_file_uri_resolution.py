@@ -62,10 +62,25 @@ class TestResolveFileUri:
         with pytest.raises(KeyError):
             resolve_file_uri(desc, dataset="ds", session="sess")
 
-    def test_none_dataset_and_session_use_empty_string(self):
+    def test_none_dataset_for_dataset_placeholder_raises(self):
         desc = {"uri_template": "/data/{dataset}/{session}/file.mp4"}
-        result = resolve_file_uri(desc, dataset=None, session=None)
-        assert result == Path("/data//file.mp4")
+        with pytest.raises(ValueError):
+            resolve_file_uri(desc, dataset=None, session="sess")
+
+    def test_none_session_for_session_placeholder_raises(self):
+        desc = {"uri_template": "/data/{dataset}/{session}/file.mp4"}
+        with pytest.raises(ValueError):
+            resolve_file_uri(desc, dataset="ds", session=None)
+
+    def test_none_dataset_ok_when_template_does_not_reference_it(self):
+        desc = {"uri_template": "/data/{session}/file.mp4"}
+        result = resolve_file_uri(desc, dataset=None, session="sess")
+        assert result == Path("/data/sess/file.mp4")
+
+    def test_braces_in_legacy_uri_are_not_formatted(self):
+        desc = {"uri": "/data/weird{not_a_placeholder}/file.mp4"}
+        result = resolve_file_uri(desc, dataset="ds", session="sess")
+        assert result == Path("/data/weird{not_a_placeholder}/file.mp4")
 
 
 # ---------------------------------------------------------------------------

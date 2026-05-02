@@ -81,7 +81,14 @@ du-process \
 Each session resolves its own input and output paths. Output annotation descriptors may carry scheme metadata that is used when no annotation file exists yet:
 
 - `file:annotation:continuous`: `sample_rate`, `min_val`, `max_val` (defaults: `1`, `0`, `1`).
-- `file:annotation:discrete`: `classes` as an `{id: label}` map.
+- `file:annotation:discrete`: `classes` as a map from class id to a dict of per-class XML attributes (typically `name`, optionally `color`, etc.). The outer key is the canonical id; the writer injects it into the XML automatically. For example:
+
+  ```json
+  "classes": {
+    "0": {"name": "neutral", "color": "#888"},
+    "1": {"name": "happiness", "color": "#ffd700"}
+  }
+  ```
 
 This matters for modules that resample continuous outputs to the scheme's `sample_rate` — without explicit metadata, outputs default to 1 Hz.
 

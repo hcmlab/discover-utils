@@ -19,7 +19,7 @@ from discover_utils.utils.request_utils import Origin, SuperType, SubType, parse
     infer_dtype
 
 
-def resolve_file_uri(desc: dict, dataset: str, session: str) -> Path:
+def resolve_file_uri(desc: dict, dataset: str | None, session: str | None) -> Path:
     """Resolve a file URI from a data description, supporting session-parameterized templates.
 
     Prefers ``uri_template`` (which may contain ``{dataset}`` and ``{session}`` placeholders)
@@ -31,8 +31,10 @@ def resolve_file_uri(desc: dict, dataset: str, session: str) -> Path:
 
     Args:
         desc (dict): Data description dictionary. Must contain either ``uri_template`` or ``uri``.
-        dataset (str): The dataset name used to fill ``{dataset}`` in the template.
-        session (str): The session name used to fill ``{session}`` in the template.
+        dataset (str | None): The dataset name used to fill ``{dataset}`` in the template.
+            May be ``None`` if the template does not reference ``{dataset}``.
+        session (str | None): The session name used to fill ``{session}`` in the template.
+            May be ``None`` if the template does not reference ``{session}``.
 
     Returns:
         Path: Resolved file path.
@@ -310,7 +312,7 @@ class SessionManager:
                             data = DiscreteAnnotation(
                                 scheme=DiscreteAnnotationScheme(
                                     name='generic',
-                                    classes=desc.get('classes', {'1': 'class_one', '2': 'class_two'}),
+                                    classes=desc.get('classes', {'1': {'name': 'class_one'}, '2': {'name': 'class_two'}}),
                                 )
                             )
                         else:

@@ -84,11 +84,24 @@ class DiscreteAnnotationScheme(IAnnotationScheme):
     """
     Discrete annotation scheme class.
 
+    The ``classes`` mapping is keyed by class id and each value is itself a dict
+    of XML-attribute-style metadata for that class (typically at least ``name``,
+    optionally ``color``, ``isGarbage``, etc.). The outer key is the canonical
+    id; the writer injects it into the XML automatically, so the inner dict need
+    not repeat it.
+
+    Example::
+
+        {
+            "0": {"name": "neutral", "color": "#888"},
+            "1": {"name": "happiness", "color": "#ffd700"},
+        }
+
     Attributes:
-        classes (dict): Dictionary mapping class IDs to class names.
+        classes (dict): Dictionary mapping class IDs to per-class attribute dicts.
 
     Args:
-        classes (dict): Dictionary mapping class IDs to class names.
+        classes (dict): Dictionary mapping class IDs to per-class attribute dicts.
         *args: Variable length argument list.
         **kwargs: Arbitrary keyword arguments.
     """

@@ -3,6 +3,7 @@ Author: Dominik Schiller <dominik.schiller@uni-a.de>
 Date: 25.10.2023
 """
 from pathlib import Path
+from string import Formatter
 from discover_utils.data.annotation import FreeAnnotation, FreeAnnotationScheme, ContinuousAnnotation, \
     ContinuousAnnotationScheme, DiscreteAnnotation, DiscreteAnnotationScheme
 from discover_utils.utils import path_utils
@@ -19,25 +20,40 @@ from discover_utils.utils.request_utils import Origin, SuperType, SubType, parse
     infer_dtype
 
 
-def resolve_file_uri(desc: dict, dataset: str, session: str) -> Path:
+def resolve_file_uri(desc: dict, dataset: str | None, session: str | None) -> Path:
     """Resolve a file URI from a data description, supporting session-parameterized templates.
 
-    Checks for ``uri_template`` first (which may contain ``{dataset}`` and ``{session}``
-    placeholders), falling back to the plain ``uri`` field for backward compatibility.
+    Prefers ``uri_template`` (which may contain ``{dataset}`` and ``{session}`` placeholders)
+    over ``uri``. The plain ``uri`` field is returned verbatim and is never passed through
+    ``str.format``, so paths containing literal ``{`` characters are safe.
+
+    Both ``uri`` and ``uri_template`` are filesystem paths — absolute or relative to the
+    working directory — with no implicit base directory.
 
     Args:
-        desc (dict): Data description dictionary. May contain ``uri_template`` or ``uri``.
-        dataset (str): The dataset name used to fill ``{dataset}`` in the template.
-        session (str): The session name used to fill ``{session}`` in the template.
+        desc (dict): Data description dictionary. Must contain either ``uri_template`` or ``uri``.
+        dataset (str | None): The dataset name used to fill ``{dataset}`` in the template.
+            May be ``None`` if the template does not reference ``{dataset}``.
+        session (str | None): The session name used to fill ``{session}`` in the template.
+            May be ``None`` if the template does not reference ``{session}``.
 
     Returns:
         Path: Resolved file path.
+
+    Raises:
+        ValueError: If ``uri_template`` references ``{dataset}`` or ``{session}`` but the
+            corresponding argument is empty / ``None``.
+        KeyError: If neither ``uri_template`` nor ``uri`` is present in ``desc``.
     """
     template = desc.get("uri_template")
     if template is not None:
-        if "{dataset}" in template and not dataset:
+        # Use Formatter().parse() to walk real format fields. This correctly handles
+        # escaped braces (``{{`` / ``}}``) and field specs (``{session:...}``) — substring
+        # checks would mis-classify both.
+        fields = {fname for _, fname, _, _ in Formatter().parse(template) if fname is not None}
+        if "dataset" in fields and not dataset:
             raise ValueError(f"uri_template references {{dataset}} but no dataset was provided: {template}")
-        if "{session}" in template and not session:
+        if "session" in fields and not session:
             raise ValueError(f"uri_template references {{session}} but no session was provided: {template}")
         return Path(template.format(dataset=dataset, session=session))
     if "uri" in desc:
@@ -88,6 +104,10 @@ class SessionManager:
             To load a stream file from disk using data.handler.file_handler.FileHandler we only need a filepath
             ``"uri"``
                 The filepath from which to load the data from. Only necessary when loading files from disk.
+            ``"uri_template"``
+                Optional alternative to ``"uri"`` that supports ``{dataset}`` and ``{session}`` placeholders,
+                resolved per session via :func:`resolve_file_uri`. Takes precedence over ``"uri"`` when both
+                are set. Useful for batched multi-session jobs where each session has its own file path.
 
         session (str, optional): The name or title of the session.
         source_context (dict[str, dict]) : List of parameters that are need to interact with a source. E.g. database credentials or data directories. Must match constructor arguments of the respective data handler.
@@ -161,8 +181,12 @@ class SessionManager:
                 ``"role"``
                     The role to which the data belongs. Only necessary when accessing data from the database.
             To load a stream file from disk using data.handler.file_handler.FileHandler we only need a filepath
-            ``"fp"``
+            ``"uri"``
                 The filepath from which to load the data from. Only necessary when loading files from disk.
+            ``"uri_template"``
+                Optional alternative to ``"uri"`` that supports ``{dataset}`` and ``{session}`` placeholders,
+                resolved per session via :func:`resolve_file_uri`. Takes precedence over ``"uri"`` when both
+                are set.
 
         Returns:
 
@@ -293,7 +317,7 @@ class SessionManager:
                             data = DiscreteAnnotation(
                                 scheme=DiscreteAnnotationScheme(
                                     name='generic',
-                                    classes=desc.get('classes', {'1': 'class_one', '2': 'class_two'}),
+                                    classes=desc.get('classes', {'1': {'name': 'class_one'}, '2': {'name': 'class_two'}}),
                                 )
                             )
                         else:
@@ -329,9 +353,13 @@ class SessionManager:
                   The annotator of the annotations to load. Only necessary when loading annotations from the database.
               ``"role"``
                   The role to which the data belongs. Only necessary when accessing data from the database.
-          To load a stream file from disk using data.handler.file_handler.FileHandler we only need a filepath
-          ``"fp"``
-              The filepath from which to load the data from. Only necessary when loading files from disk.
+          To save a data object to disk using data.handler.file_handler.FileHandler we only need a filepath
+          ``"uri"``
+              The filepath to write the data to. Only necessary when saving files to disk.
+          ``"uri_template"``
+              Optional alternative to ``"uri"`` that supports ``{dataset}`` and ``{session}`` placeholders,
+              resolved per session via :func:`resolve_file_uri`. Takes precedence over ``"uri"`` when both
+              are set.
 
         Returns:
         """

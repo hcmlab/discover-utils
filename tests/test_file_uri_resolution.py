@@ -82,6 +82,20 @@ class TestResolveFileUri:
         result = resolve_file_uri(desc, dataset="ds", session="sess")
         assert result == Path("/data/weird{not_a_placeholder}/file.mp4")
 
+    def test_escaped_braces_in_template_do_not_count_as_placeholders(self):
+        # ``{{`` and ``}}`` are literal braces in a format string. They must not
+        # trigger the dataset/session placeholder validation.
+        desc = {"uri_template": "/data/{{dataset}}/{{session}}/file.mp4"}
+        result = resolve_file_uri(desc, dataset=None, session=None)
+        assert result == Path("/data/{dataset}/{session}/file.mp4")
+
+    def test_format_specs_on_placeholders_are_recognized(self):
+        # ``{session:>8}`` is a valid placeholder with a format spec; substring
+        # checks would miss it. The Formatter-based detection must catch it.
+        desc = {"uri_template": "/data/{session:>8}/file.mp4"}
+        with pytest.raises(ValueError):
+            resolve_file_uri(desc, dataset="ds", session=None)
+
 
 # ---------------------------------------------------------------------------
 # SessionManager.load() — two sessions load different paths via uri_template
@@ -247,18 +261,36 @@ class TestOutputAnnotationMetadata:
         anno = sm.output_data_templates["valence"]
         assert anno.annotation_scheme.sample_rate == 1
 
-    def test_discrete_template_uses_classes_from_desc(self):
-        classes = {"0": "neutral", "1": "happiness", "2": "sadness"}
+    def test_discrete_template_uses_classes_from_desc_canonical(self):
+        classes = {
+            "0": {"name": "neutral", "color": "#888"},
+            "1": {"name": "happiness"},
+        }
         desc_override = {
             "id": "expression",
             "src": "file:annotation:discrete",
             "classes": classes,
         }
         sm = self._load_output_template(desc_override)
-        # Key is "expression" because we overrode id
         anno = sm.output_data_templates["expression"]
         assert isinstance(anno, DiscreteAnnotation)
         assert anno.annotation_scheme.classes == classes
+
+    def test_discrete_template_normalizes_legacy_string_classes(self):
+        legacy = {"0": "neutral", "1": "happiness", "2": "sadness"}
+        desc_override = {
+            "id": "expression",
+            "src": "file:annotation:discrete",
+            "classes": legacy,
+        }
+        sm = self._load_output_template(desc_override)
+        anno = sm.output_data_templates["expression"]
+        assert isinstance(anno, DiscreteAnnotation)
+        assert anno.annotation_scheme.classes == {
+            "0": {"name": "neutral"},
+            "1": {"name": "happiness"},
+            "2": {"name": "sadness"},
+        }
 
     def test_discrete_template_defaults_when_no_classes_in_desc(self):
         desc_override = {
@@ -270,3 +302,61 @@ class TestOutputAnnotationMetadata:
         assert isinstance(anno, DiscreteAnnotation)
         # Default classes should be present
         assert len(anno.annotation_scheme.classes) > 0
+
+
+# ---------------------------------------------------------------------------
+# FileHandler.save() — discrete scheme XML id-injection
+# ---------------------------------------------------------------------------
+
+class TestDiscreteSchemeIdInjection:
+    """Verifies that the writer injects the canonical class id from the outer
+    dict key into the XML, so callers don't need to repeat it inside the
+    per-class attribute dict."""
+
+    def _save_and_parse(self, classes: dict, tmp_path: Path):
+        import numpy as np
+        import xml.etree.ElementTree as Et
+        from discover_utils.data.handler.file_handler import FileHandler
+
+        scheme = DiscreteAnnotationScheme(name="emotion", classes=classes)
+        data = np.array([], dtype=scheme.label_dtype)
+        anno = DiscreteAnnotation(data=data, scheme=scheme)
+        fp = tmp_path / "out.annotation"
+        FileHandler().save(data=anno, fp=fp)
+        # The XML lives at fp; the binary data lives at fp + "~"
+        return Et.parse(fp).getroot()
+
+    def test_id_injected_from_outer_key_when_missing_inside(self, tmp_path):
+        classes = {
+            "0": {"name": "neutral"},
+            "1": {"name": "happiness", "color": "#ffd700"},
+        }
+        root = self._save_and_parse(classes, tmp_path)
+        items = root.findall("./scheme/item")
+        assert {it.get("id"): it.get("name") for it in items} == {
+            "0": "neutral",
+            "1": "happiness",
+        }
+        color_by_id = {it.get("id"): it.get("color") for it in items}
+        assert color_by_id["1"] == "#ffd700"
+
+    def test_outer_key_wins_over_inner_id(self, tmp_path):
+        # If the inner dict carries a (potentially stale) id, the outer key
+        # must win — the outer dict is the single source of truth.
+        classes = {
+            "0": {"id": "999", "name": "neutral"},
+            "1": {"id": "888", "name": "happiness"},
+        }
+        root = self._save_and_parse(classes, tmp_path)
+        ids = sorted(it.get("id") for it in root.findall("./scheme/item"))
+        assert ids == ["0", "1"]
+
+    def test_legacy_string_classes_are_coerced_and_serialize(self, tmp_path):
+        # Legacy {id: name_str} form should be normalized at scheme construction
+        # and round-trip cleanly through the writer.
+        classes = {"0": "neutral", "1": "happiness"}
+        root = self._save_and_parse(classes, tmp_path)
+        assert {it.get("id"): it.get("name") for it in root.findall("./scheme/item")} == {
+            "0": "neutral",
+            "1": "happiness",
+        }

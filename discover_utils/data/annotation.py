@@ -84,11 +84,33 @@ class DiscreteAnnotationScheme(IAnnotationScheme):
     """
     Discrete annotation scheme class.
 
+    The ``classes`` mapping is keyed by class id and each value is itself a dict
+    of XML-attribute-style metadata for that class (typically at least ``name``,
+    optionally ``color``, ``isGarbage``, etc.). The outer key is the canonical
+    id; the writer injects it into the XML automatically, so the inner dict need
+    not repeat it.
+
+    For backward compatibility, plain string values are accepted and normalized to
+    ``{"name": <str>}`` at construction time, so legacy ``{id: name}`` configs still
+    work.
+
+    Example::
+
+        # Canonical form
+        {
+            "0": {"name": "neutral", "color": "#888"},
+            "1": {"name": "happiness", "color": "#ffd700"},
+        }
+
+        # Legacy form, normalized internally to the canonical form
+        {"0": "neutral", "1": "happiness"}
+
     Attributes:
-        classes (dict): Dictionary mapping class IDs to class names.
+        classes (dict): Dictionary mapping class IDs to per-class attribute dicts.
 
     Args:
-        classes (dict): Dictionary mapping class IDs to class names.
+        classes (dict): Dictionary mapping class IDs to per-class attribute dicts,
+            or to plain class-name strings (which are normalized to ``{"name": <str>}``).
         *args: Variable length argument list.
         **kwargs: Arbitrary keyword arguments.
     """
@@ -98,7 +120,10 @@ class DiscreteAnnotationScheme(IAnnotationScheme):
         Initialize a DiscreteAnnotationScheme instance with the provided class information.
         """
         super().__init__(*args, **kwargs)
-        self.classes = classes
+        self.classes = {
+            k: ({"name": v} if isinstance(v, str) else v)
+            for k, v in classes.items()
+        }
 
     @classmethod
     @property

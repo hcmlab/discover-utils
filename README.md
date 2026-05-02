@@ -50,6 +50,58 @@ du-process \
   --data '[{"src": "db:anno", "scheme": "transcript", "annotator": "test", "role": "testrole"}]'
 ```
 
+#### File mode (no database)
+
+Read inputs and write outputs directly from/to disk, without a NOVA database. Use `file:` sources and supply a path via `uri` (static, single session) or `uri_template` (per-session paths via `{dataset}` and `{session}` placeholders):
+
+```bash
+du-process \
+  --dataset "my_study" \
+  --trainer_file_path "path/to/trainer.trainer" \
+  --sessions '["session_a", "session_b"]' \
+  --data '[
+    {
+      "id": "video",
+      "type": "input",
+      "src": "file:stream:video",
+      "uri_template": "/data/{dataset}/{session}/video.mp4"
+    },
+    {
+      "id": "valence",
+      "type": "output",
+      "src": "file:annotation:continuous",
+      "uri_template": "/outputs/{dataset}/{session}/valence.annotation",
+      "sample_rate": 30,
+      "min_val": -1,
+      "max_val": 1
+    }
+  ]'
+```
+
+Each session resolves its own input and output paths. Output annotation descriptors may carry scheme metadata that is used when no annotation file exists yet:
+
+- `file:annotation:continuous`: `sample_rate`, `min_val`, `max_val` (defaults: `1`, `0`, `1`).
+- `file:annotation:discrete`: `classes` as a map from class id to a dict of per-class XML attributes (typically `name`, optionally `color`, etc.). The outer key is the canonical id; the writer injects it into the XML automatically. For example:
+
+  ```jsonc
+  // fragment of a data description entry
+  "classes": {
+    "0": {"name": "neutral", "color": "#888"},
+    "1": {"name": "happiness", "color": "#ffd700"}
+  }
+  ```
+
+  Legacy ``{id: name}`` strings are also accepted and normalized internally to the
+  canonical form.
+
+This matters for modules that resample continuous outputs to the scheme's `sample_rate` — without explicit metadata, outputs default to 1 Hz.
+
+Notes:
+
+- `uri` and `uri_template` are filesystem paths (absolute or relative to the working directory). There is no implicit base directory.
+- `uri_template` placeholders that reference `{dataset}` or `{session}` must have non-empty values; otherwise `resolve_file_uri` raises `ValueError`.
+- `uri_template` takes precedence over `uri` when both are present.
+
 ### Python API
 
 ```python

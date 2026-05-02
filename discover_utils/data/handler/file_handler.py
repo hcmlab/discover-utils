@@ -405,9 +405,12 @@ class _AnnotationFileHandler(IHandler):
                 attrib={"name": scheme_name, "type": scheme_type.name}
             )
             for class_id, class_attributes in data.annotation_scheme.classes.items():
-                Et.SubElement(
-                    scheme, "item", attrib={str(k): str(v) for k, v in class_attributes.items()}
-                )
+                # The outer key is the canonical class id; inject it as the "id" XML
+                # attribute so callers don't have to repeat it inside class_attributes.
+                # If both are present, the outer key wins.
+                attribs = {"id": str(class_id)}
+                attribs.update({str(k): str(v) for k, v in class_attributes.items() if k != "id"})
+                Et.SubElement(scheme, "item", attrib=attribs)
 
         elif scheme_type == SchemeType.CONTINUOUS:
             data: ContinuousAnnotation

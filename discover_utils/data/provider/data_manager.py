@@ -3,6 +3,7 @@ Author: Dominik Schiller <dominik.schiller@uni-a.de>
 Date: 25.10.2023
 """
 from pathlib import Path
+from string import Formatter
 from discover_utils.data.annotation import FreeAnnotation, FreeAnnotationScheme, ContinuousAnnotation, \
     ContinuousAnnotationScheme, DiscreteAnnotation, DiscreteAnnotationScheme
 from discover_utils.utils import path_utils
@@ -46,9 +47,13 @@ def resolve_file_uri(desc: dict, dataset: str | None, session: str | None) -> Pa
     """
     template = desc.get("uri_template")
     if template is not None:
-        if "{dataset}" in template and not dataset:
+        # Use Formatter().parse() to walk real format fields. This correctly handles
+        # escaped braces (``{{`` / ``}}``) and field specs (``{session:...}``) — substring
+        # checks would mis-classify both.
+        fields = {fname for _, fname, _, _ in Formatter().parse(template) if fname is not None}
+        if "dataset" in fields and not dataset:
             raise ValueError(f"uri_template references {{dataset}} but no dataset was provided: {template}")
-        if "{session}" in template and not session:
+        if "session" in fields and not session:
             raise ValueError(f"uri_template references {{session}} but no session was provided: {template}")
         return Path(template.format(dataset=dataset, session=session))
     if "uri" in desc:

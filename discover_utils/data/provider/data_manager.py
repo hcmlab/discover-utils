@@ -19,6 +19,26 @@ from discover_utils.utils.request_utils import Origin, SuperType, SubType, parse
     infer_dtype
 
 
+def resolve_file_uri(desc: dict, dataset: str, session: str) -> Path:
+    """Resolve a file URI from a data description, supporting session-parameterized templates.
+
+    Checks for ``uri_template`` first (which may contain ``{dataset}`` and ``{session}``
+    placeholders), falling back to the plain ``uri`` field for backward compatibility.
+
+    Args:
+        desc (dict): Data description dictionary. May contain ``uri_template`` or ``uri``.
+        dataset (str): The dataset name used to fill ``{dataset}`` in the template.
+        session (str): The session name used to fill ``{session}`` in the template.
+
+    Returns:
+        Path: Resolved file path.
+    """
+    uri = desc.get("uri_template", desc.get("uri"))
+    if uri is None:
+        raise KeyError(f"Data description has neither 'uri_template' nor 'uri': {desc}")
+    return Path(str(uri).format(dataset=dataset or "", session=session or ""))
+
+
 class SessionManager:
     """
     Class to aggregate and manage interrelated incoming and outgoing datastreams belonging to a single session (e.g multimodal data from the same recording).
@@ -192,7 +212,7 @@ class SessionManager:
                         )
                 # FILE
                 elif src == Origin.FILE:
-                    fp = Path(path_utils.get_tmp_dir()) / desc['uri']
+                    fp = resolve_file_uri(desc, self.dataset, self.session)
                     handler = file_handler.FileHandler(video_backend=self.video_backend)
                     data = handler.load(fp=fp, header_only=header_only)
                 # URL
@@ -256,10 +276,20 @@ class SessionManager:
                             data = FreeAnnotation(scheme=FreeAnnotationScheme(name='generic'), data=None)
                         elif sub_dtype == SubType.CONTINUOUS:
                             data = ContinuousAnnotation(
-                                scheme=ContinuousAnnotationScheme(name='generic', sample_rate=1, min_val=0, max_val=1),
+                                scheme=ContinuousAnnotationScheme(
+                                    name='generic',
+                                    sample_rate=desc.get('sample_rate', 1),
+                                    min_val=desc.get('min_val', 0),
+                                    max_val=desc.get('max_val', 1),
+                                ),
                                 data=None)
                         elif sub_dtype == SubType.DISCRETE:
-                            data = DiscreteAnnotation(scheme=DiscreteAnnotationScheme(name='generic', classes={'1' : 'class_one', '2': 'class_two'}))
+                            data = DiscreteAnnotation(
+                                scheme=DiscreteAnnotationScheme(
+                                    name='generic',
+                                    classes=desc.get('classes', {'1': 'class_one', '2': 'class_two'}),
+                                )
+                            )
                         else:
                             raise ValueError(
                                 f"Can\'t create template for {desc} because no scheme information is available.")
@@ -342,7 +372,7 @@ class SessionManager:
                     success = handler.save(dataset=self.dataset, session=self.session, stream=data, role=role, name=name)
             elif src == Origin.FILE:
                 handler = file_handler.FileHandler()
-                success = handler.save(data=data, fp=Path(desc["uri"]))
+                success = handler.save(data=data, fp=resolve_file_uri(desc, self.dataset, self.session))
             elif src == Origin.URL:
                 raise NotImplementedError
             elif src == Origin.REQUEST:

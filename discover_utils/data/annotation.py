@@ -125,17 +125,10 @@ class DiscreteAnnotationScheme(IAnnotationScheme):
             for k, v in classes.items()
         }
 
-    @classmethod
-    @property
-    def label_dtype(self) -> dtype:
-        """Get the numpy data type of discrete labels."""
-        return LabelDType.DISCRETE.value
-
-    @classmethod
-    @property
-    def scheme_type(self) -> SchemeType:
-        """Get the type of the annotation scheme (Discrete)."""
-        return SchemeType.DISCRETE
+    #: numpy data type of discrete labels
+    label_dtype: dtype = LabelDType.DISCRETE.value
+    #: type of the annotation scheme (Discrete)
+    scheme_type: SchemeType = SchemeType.DISCRETE
 
 
 class ContinuousAnnotationScheme(IAnnotationScheme):
@@ -166,17 +159,10 @@ class ContinuousAnnotationScheme(IAnnotationScheme):
         self.min_val = min_val
         self.max_val = max_val
 
-    @classmethod
-    @property
-    def label_dtype(self) -> dtype:
-        """Get the numpy data type of continuous labels."""
-        return LabelDType.CONTINUOUS.value
-
-    @classmethod
-    @property
-    def scheme_type(self) -> SchemeType:
-        """Get the type of the annotation scheme (Continuous)."""
-        return SchemeType.CONTINUOUS
+    #: numpy data type of continuous labels
+    label_dtype: dtype = LabelDType.CONTINUOUS.value
+    #: type of the annotation scheme (Continuous)
+    scheme_type: SchemeType = SchemeType.CONTINUOUS
 
 
 class FreeAnnotationScheme(IAnnotationScheme):
@@ -197,17 +183,10 @@ class FreeAnnotationScheme(IAnnotationScheme):
         """
         super().__init__(*args, **kwargs)
 
-    @classmethod
-    @property
-    def label_dtype(self) -> dtype:
-        """Get the numpy data type of free text labels."""
-        return LabelDType.FREE.value
-
-    @classmethod
-    @property
-    def scheme_type(self) -> SchemeType:
-        """Get the type of the annotation scheme (Free)."""
-        return SchemeType.FREE
+    #: numpy data type of free text labels
+    label_dtype: dtype = LabelDType.FREE.value
+    #: type of the annotation scheme (Free)
+    scheme_type: SchemeType = SchemeType.FREE
 
 
 class Annotation(DynamicData):
@@ -344,7 +323,7 @@ class DiscreteAnnotation(Annotation):
             )
 
             # If one label is garbage return garbage
-            if int(annotation["id"]) is self.NOVA_GARBAGE_LABEL_ID:
+            if int(annotation["id"]) == self.NOVA_GARBAGE_LABEL_ID:
                 return self.GARBAGE_LABEL_ID
 
             dist[annotation["id"]] += dur

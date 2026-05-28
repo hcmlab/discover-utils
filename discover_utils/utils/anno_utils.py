@@ -10,14 +10,12 @@ Date:
 from typing import Union
 
 import numpy as np
-from numba import njit
 
 from discover_utils.utils.type_definitions import SSILabelDType, LabelDType
 from discover_utils.utils.type_definitions import SchemeType
 
 
 # TODO: Currently we do not take the rest class into account when calculating the label for the frame. Maybe we should do this
-@njit
 def get_overlap(a: np.ndarray, start: int, end: int):
     """
     Calculating all overlapping intervals between the given array of time intervals and the interval [start, end]
@@ -55,7 +53,7 @@ def get_anno_majority_distribution(a: np.ndarray, overlap_idxs: np.ndarray, star
 
     Returns:
         np.ndarray numpy array containing the data distribution of the classes within the given frame. each index in the array matches the respective class id.
-        np.NaN if a label is detected that ist negative or larger than num_classes
+        np.nan if a label is detected that ist negative or larger than num_classes
     """
     dist = np.zeros( (num_classes,) )
 
@@ -63,7 +61,7 @@ def get_anno_majority_distribution(a: np.ndarray, overlap_idxs: np.ndarray, star
     for annotation in a[overlap_idxs]:
         dur = np.minimum(end, annotation['to']) - np.maximum(start, annotation['from'])
         if int(annotation['id']) not in range(num_classes):
-            return np.NaN
+            return np.nan
 
         dist[annotation['id']] += dur
 
@@ -85,7 +83,6 @@ def get_anno_majority(a: np.ndarray, overlap_idxs: np.ndarray, start: int, end: 
     Returns:
 
     """
-    # TODO: rewrite for numba jit
     majority_index = -1
     overlap = 0
     for i in np.where(overlap_idxs)[0]:

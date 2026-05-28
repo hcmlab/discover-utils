@@ -214,15 +214,27 @@ def convert_ssi_to_label_dtype(
 
 def _pack(data : np.ndarray[LabelDType.DISCRETE], max_time_gap=0):
 
+    if len(data) == 0:
+        return data
+
     # Conditions to stop label aggregation
     label_changes = data['id'][:-1] != data['id'][1:]
     larger_than_max_gap = data['from'][1:] - data['to'][:-1] > max_time_gap
-    change = [a or b for a,b in zip(label_changes, larger_than_max_gap)]
+    change = label_changes | larger_than_max_gap
 
-    split_data = np.split(data, np.where(change)[0]+1)
+    # Cluster boundaries: a cluster spans [start, end] (inclusive)
+    boundaries = np.where(change)[0] + 1
+    starts = np.concatenate(([0], boundaries))
+    ends = np.concatenate((boundaries, [len(data)])) - 1
+    counts = ends - starts + 1
 
-    # Aggregate all data clusters to one new label
-    agg_data = np.asarray([ (x[0]['from'], x[-1]['to'], x[-1]['id'], np.mean(x['conf']) ) for x in split_data], dtype=data.dtype)
+    # Aggregate all data clusters to one new label. conf is the mean over the
+    # cluster, computed in a single vectorized reduceat instead of per-cluster.
+    agg_data = np.empty(len(starts), dtype=data.dtype)
+    agg_data['from'] = data['from'][starts]
+    agg_data['to'] = data['to'][ends]
+    agg_data['id'] = data['id'][ends]
+    agg_data['conf'] = np.add.reduceat(data['conf'], starts) / counts
     return agg_data
 
 

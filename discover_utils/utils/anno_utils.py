@@ -7,6 +7,7 @@ Date:
 
 """
 
+import warnings
 from typing import Union
 
 import numpy as np
@@ -49,7 +50,17 @@ def get_anno_majority_distribution(a: np.ndarray, overlap_idxs: np.ndarray, star
     Returns:
         np.ndarray numpy array containing the data distribution of the classes within the given frame. each index in the array matches the respective class id.
         np.nan if a label is detected that ist negative or larger than num_classes
+
+    .. deprecated::
+        Unused within discover-utils and discover-modules. Scheduled for
+        removal in the next major release.
     """
+    warnings.warn(
+        "get_anno_majority_distribution is deprecated and will be removed in a "
+        "future major release.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     dist = np.zeros( (num_classes,) )
 
     # for each sample point where we have an overlap with the label
@@ -77,7 +88,16 @@ def get_anno_majority(a: np.ndarray, overlap_idxs: np.ndarray, start: int, end: 
 
     Returns:
 
+    .. deprecated::
+        Unused within discover-utils and discover-modules. Scheduled for
+        removal in the next major release.
     """
+    warnings.warn(
+        "get_anno_majority is deprecated and will be removed in a future major "
+        "release.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     majority_index = -1
     overlap = 0
     for i in np.where(overlap_idxs)[0]:

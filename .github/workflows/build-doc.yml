@@ -19,6 +19,10 @@ jobs:
           sphinx-build docs/docsource docs/docbuild
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
+        # peaceiris/actions-gh-pages has no Node 24 release yet; opt its
+        # Node 20 runtime into Node 24 ahead of the June 2026 forced cutoff.
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         with:
           publish_branch: gh-pages

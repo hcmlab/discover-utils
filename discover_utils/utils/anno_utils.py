@@ -29,14 +29,9 @@ def get_overlap(a: np.ndarray, start: int, end: int):
         Numpy array with boolean values. The array is true where the interval specified in a overlaps [start, end]
 
     """
-    annos_for_sample = (
-        # annotation is bigger than frame
-        ((a[:, 0] <= start) & (a[:, 1] >= end))
-        # end of annotation is in frame
-        | ((a[:, 1] >= start) & (a[:, 1] <= end))
-        # start of annotation is in frame
-        | ((a[:, 0] >= start) & (a[:, 0] <= end))
-    )
+    # An interval [from, to] (with from <= to) overlaps [start, end] iff its
+    # start is not past the frame end and its end is not before the frame start.
+    annos_for_sample = (a[:, 0] <= end) & (a[:, 1] >= start)
     return annos_for_sample
 
 

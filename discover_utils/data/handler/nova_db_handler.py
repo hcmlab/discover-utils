@@ -279,7 +279,7 @@ class NovaDBHandler:
         List the annotation schemes of a dataset as lightweight metadata.
 
         Returns name and type only - the (potentially large) labels/attributes payload
-        is not loaded. Use AnnotationHandler.load(..., header_only=True) for a full scheme.
+        is not loaded.
         """
         return list(
             self._require_client()[dataset][SCHEME_COLLECTION].find(
@@ -326,14 +326,23 @@ class NovaDBHandler:
             list[dict]: One dict per annotation with keys
                 'session', 'annotator', 'role', 'scheme', 'isFinished', 'isLocked'.
         """
-        pipeline = [
+        db = self._require_client()[dataset]
+
+        pipeline = []
+        # filter on session_id BEFORE the joins so the lookups only run on the
+        # session's annotations, not the whole collection
+        if session is not None:
+            session_doc = db[SESSION_COLLECTION].find_one({"name": session}, {"_id": 1})
+            if not session_doc:
+                return []
+            pipeline.append({"$match": {"session_id": session_doc["_id"]}})
+
+        pipeline += [
             {"$lookup": {"from": SESSION_COLLECTION, "localField": "session_id", "foreignField": "_id", "as": "session"}},
             {"$lookup": {"from": ANNOTATOR_COLLECTION, "localField": "annotator_id", "foreignField": "_id", "as": "annotator"}},
             {"$lookup": {"from": ROLE_COLLECTION, "localField": "role_id", "foreignField": "_id", "as": "role"}},
             {"$lookup": {"from": SCHEME_COLLECTION, "localField": "scheme_id", "foreignField": "_id", "as": "scheme"}},
         ]
-        if session is not None:
-            pipeline.append({"$match": {"session.name": session}})
         pipeline.append(
             {
                 "$project": {
@@ -347,7 +356,7 @@ class NovaDBHandler:
                 }
             }
         )
-        return list(self._require_client()[dataset][ANNOTATION_COLLECTION].aggregate(pipeline))
+        return list(db[ANNOTATION_COLLECTION].aggregate(pipeline))
 
 
 class NovaSession:
@@ -520,7 +529,7 @@ class AnnotationHandler(IHandler, NovaDBHandler):
             return anno
 
         anno = db[ANNOTATION_COLLECTION].find_one(query)
-        if not anno:
+        if not anno or not anno.get("data_id"):
             return {}
 
         # fetch the annotation data payload only for the matched annotation

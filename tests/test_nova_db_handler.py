@@ -167,16 +167,28 @@ class TestListAnnotations:
         assert not any("$match" in s for s in pipeline)
         assert result[0]["scheme"] == "sc"
 
-    def test_session_filter_adds_match(self):
+    def test_session_filter_matches_session_id_before_lookups(self):
         handler, client, collections, db = _make_handler()
+        collections.setdefault(SESSION_COLLECTION, MagicMock()).find_one.return_value = {"_id": "sess1"}
         coll = collections.setdefault(ANNOTATION_COLLECTION, MagicMock())
         coll.aggregate.return_value = []
 
         handler.list_annotations("ds", session="s1")
 
         pipeline = self._pipeline_of(collections)
-        matches = [s["$match"] for s in pipeline if "$match" in s]
-        assert matches == [{"session.name": "s1"}]
+        # session_id $match must be the FIRST stage, before any $lookup (prunes the join)
+        assert pipeline[0] == {"$match": {"session_id": "sess1"}}
+        collections[SESSION_COLLECTION].find_one.assert_called_once_with({"name": "s1"}, {"_id": 1})
+
+    def test_unknown_session_returns_empty(self):
+        handler, client, collections, db = _make_handler()
+        collections.setdefault(SESSION_COLLECTION, MagicMock()).find_one.return_value = None
+        anno = collections.setdefault(ANNOTATION_COLLECTION, MagicMock())
+
+        result = handler.list_annotations("ds", session="missing")
+
+        assert result == []
+        anno.aggregate.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

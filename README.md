@@ -119,6 +119,36 @@ dm = DatasetManager(
 )
 ```
 
+#### Exploring a database
+
+When you don't already know the dataset, scheme, or annotator names, use the
+exploration queries on the MongoDB handler to discover what's available. They are
+read-only and return lightweight metadata (no stream files or annotation labels are
+loaded):
+
+```python
+from discover_utils.data.handler.nova_db_handler import NovaDBHandler
+
+db = NovaDBHandler(
+    db_host="127.0.0.1", db_port=27017, db_user="user", db_password="pass",
+)
+
+db.list_datasets()                      # datasets you can read
+db.list_sessions("my_dataset")          # session names
+db.list_scheme_names("my_dataset")      # scheme names
+db.list_schemes("my_dataset")           # [{name, type}, ...]
+db.list_roles("my_dataset")             # role names
+db.list_annotators("my_dataset")        # annotator names
+db.list_streams("my_dataset")           # stream metadata (no files read)
+
+# which annotations exist for a session, without loading any labels
+db.list_annotations("my_dataset", session="session1")
+# -> [{session, annotator, role, scheme, isFinished, isLocked}, ...]
+```
+
+The same methods are inherited by `AnnotationHandler`, `StreamHandler`, and
+`SessionHandler`, so you can explore and load through a single handler instance.
+
 ## Documentation
 
 Full API documentation is available at [hcmlab.github.io/discover-utils/docbuild/](https://hcmlab.github.io/discover-utils/docbuild/).

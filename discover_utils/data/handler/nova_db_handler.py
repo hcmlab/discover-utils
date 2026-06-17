@@ -224,6 +224,156 @@ class NovaDBHandler:
         """
         return self._client
 
+    def _require_client(self) -> MongoClient:
+        """Return the MongoDB client or raise a clear error if not connected."""
+        if self._client is None:
+            raise ConnectionError(
+                "Not connected to a MongoDB database. Provide db_host/db_port/db_user/db_password or call connect() first."
+            )
+        return self._client
+
+    # ------------------------------------------------------------------
+    # Exploration queries
+    #
+    # Read-only enumeration helpers to discover what exists in the database
+    # without knowing exact names up front. Available on every handler via
+    # inheritance; for pure exploration a plain NovaDBHandler can be used.
+    # ------------------------------------------------------------------
+    def list_datasets(self, nova_only: bool = True) -> list[str]:
+        """
+        List the names of all datasets (databases) the connected user can read.
+
+        Args:
+            nova_only (bool): If True (default), only return databases that look like
+                NOVA datasets (those containing a 'Sessions' collection), excluding
+                MongoDB's internal 'admin'/'config'/'local' databases. If False, return
+                all readable databases except the internal ones.
+
+        Returns:
+            list[str]: Dataset names.
+        """
+        client = self._require_client()
+        system_dbs = {"admin", "config", "local"}
+        datasets = [db for db in client.list_database_names() if db not in system_dbs]
+        if nova_only:
+            datasets = [
+                db for db in datasets
+                if SESSION_COLLECTION in client[db].list_collection_names()
+            ]
+        return datasets
+
+    def list_sessions(self, dataset: str) -> list[str]:
+        """
+        List the session names of a dataset.
+
+        Lightweight names-only query. For full session objects use SessionHandler.load.
+        """
+        return self._require_client()[dataset][SESSION_COLLECTION].distinct("name")
+
+    def list_scheme_names(self, dataset: str) -> list[str]:
+        """List the annotation scheme names of a dataset."""
+        return self._require_client()[dataset][SCHEME_COLLECTION].distinct("name")
+
+    def list_schemes(self, dataset: str) -> list[dict]:
+        """
+        List the annotation schemes of a dataset as lightweight metadata.
+
+        Returns name and type only - the (potentially large) labels/attributes payload
+        is not loaded.
+        """
+        return list(
+            self._require_client()[dataset][SCHEME_COLLECTION].find(
+                {}, {"name": 1, "type": 1, "_id": 0}
+            )
+        )
+
+    def list_roles(self, dataset: str) -> list[str]:
+        """List the role names of a dataset."""
+        return self._require_client()[dataset][ROLE_COLLECTION].distinct("name")
+
+    def list_annotators(self, dataset: str) -> list[str]:
+        """List the annotator names of a dataset."""
+        return self._require_client()[dataset][ANNOTATOR_COLLECTION].distinct("name")
+
+    def list_streams(self, dataset: str) -> list[dict]:
+        """
+        List the streams of a dataset as lightweight metadata.
+
+        Returns stream metadata only (name, type, sample rate, dim labels, file
+        extension, validity). No stream file is read from disk.
+        """
+        return list(
+            self._require_client()[dataset][STREAM_COLLECTION].find(
+                {},
+                {"name": 1, "type": 1, "sr": 1, "dimlabels": 1, "fileExt": 1, "isValid": 1, "_id": 0},
+            )
+        )
+
+    def list_annotations(self, dataset: str, session: str = None) -> list[dict]:
+        """
+        List the annotations of a dataset (optionally filtered to one session) as
+        metadata only.
+
+        Returns the session/annotator/role/scheme combinations that exist, together
+        with isFinished/isLocked flags. The annotation data payload is deliberately
+        NOT loaded - this answers "what annotations exist" without pulling any labels.
+
+        Args:
+            dataset (str): Name of the dataset.
+            session (str, optional): If given, only annotations of this session are returned.
+
+        Returns:
+            list[dict]: One dict per annotation with keys
+                'session', 'annotator', 'role', 'scheme', 'isFinished', 'isLocked'.
+        """
+        db = self._require_client()[dataset]
+
+        pipeline = []
+        # filter on session_id BEFORE the joins so the lookups only run on the
+        # session's annotations, not the whole collection
+        if session is not None:
+            session_doc = db[SESSION_COLLECTION].find_one({"name": session}, {"_id": 1})
+            if not session_doc:
+                return []
+            pipeline.append({"$match": {"session_id": session_doc["_id"]}})
+
+        def name_lookup(from_coll, local_field, as_field):
+            # $lookup pipeline form: project only `name` inside the join so the
+            # (potentially large) joined documents - e.g. a scheme's labels/attributes -
+            # are never pulled, keeping this query metadata-only.
+            return {
+                "$lookup": {
+                    "from": from_coll,
+                    "let": {"fid": f"${local_field}"},
+                    "pipeline": [
+                        {"$match": {"$expr": {"$eq": ["$_id", "$$fid"]}}},
+                        {"$project": {"name": 1, "_id": 0}},
+                    ],
+                    "as": as_field,
+                }
+            }
+
+        pipeline += [
+            name_lookup(SESSION_COLLECTION, "session_id", "session"),
+            name_lookup(ANNOTATOR_COLLECTION, "annotator_id", "annotator"),
+            name_lookup(ROLE_COLLECTION, "role_id", "role"),
+            name_lookup(SCHEME_COLLECTION, "scheme_id", "scheme"),
+        ]
+        pipeline.append(
+            {
+                "$project": {
+                    "_id": 0,
+                    "session": {"$arrayElemAt": ["$session.name", 0]},
+                    "annotator": {"$arrayElemAt": ["$annotator.name", 0]},
+                    "role": {"$arrayElemAt": ["$role.name", 0]},
+                    "scheme": {"$arrayElemAt": ["$scheme.name", 0]},
+                    "isFinished": 1,
+                    "isLocked": 1,
+                }
+            }
+        )
+        return list(db[ANNOTATION_COLLECTION].aggregate(pipeline))
+
 
 class NovaSession:
     """
@@ -355,69 +505,67 @@ class AnnotationHandler(IHandler, NovaDBHandler):
             project (dict, optional): Projection for MongoDB query to filter attributes. Defaults to None.
 
         Returns:
-            dict: Loaded annotation data.
+            dict: Loaded annotation data. When ``project`` is None the returned dict
+                mirrors the previous aggregate shape, exposing ``data`` and ``scheme``
+                as single-item lists (``[data_doc]`` / ``[scheme_doc]``). When
+                ``project`` is given, the projection is applied to the annotation
+                document and the ``data``/``scheme`` documents are not fetched.
+
+        Notes:
+            Resolves the session/annotator/role/scheme names to their ids via indexed
+            ``find_one`` lookups, then fetches the single matching annotation by id -
+            avoiding a collection-wide ``$lookup`` join across all annotations. The
+            large ``AnnotationData`` payload is only read for the matched annotation.
+            Mirrors the id-resolution pattern used in ``save``.
         """
-        pipeline = [
-            {
-                "$lookup": {
-                    "from": SESSION_COLLECTION,
-                    "localField": "session_id",
-                    "foreignField": "_id",
-                    "as": "session",
-                }
-            },
-            {
-                "$lookup": {
-                    "from": ANNOTATOR_COLLECTION,
-                    "localField": "annotator_id",
-                    "foreignField": "_id",
-                    "as": "annotator",
-                }
-            },
-            {
-                "$lookup": {
-                    "from": ROLE_COLLECTION,
-                    "localField": "role_id",
-                    "foreignField": "_id",
-                    "as": "role",
-                }
-            },
-            {
-                "$lookup": {
-                    "from": SCHEME_COLLECTION,
-                    "localField": "scheme_id",
-                    "foreignField": "_id",
-                    "as": "scheme",
-                }
-            },
-            {
-                "$match": {
-                    "$and": [
-                        {"role.name": role},
-                        {"session.name": session},
-                        {"annotator.name": annotator},
-                        {"scheme.name": scheme},
-                    ]
-                }
-            },
-            {
-                "$lookup": {
-                    "from": "AnnotationData",
-                    "localField": "data_id",
-                    "foreignField": "_id",
-                    "as": "data",
-                }
-            },
-        ]
+        db = self._require_client()[dataset]
 
-        # append projection
-        if project:
-            pipeline.append({"$project": project})
+        # resolve names -> ids (indexed single-document lookups, ids only)
+        scheme_id = db[SCHEME_COLLECTION].find_one({"name": scheme}, {"_id": 1})
+        session_id = db[SESSION_COLLECTION].find_one({"name": session}, {"_id": 1})
+        role_id = db[ROLE_COLLECTION].find_one({"name": role}, {"_id": 1})
+        annotator_id = db[ANNOTATOR_COLLECTION].find_one({"name": annotator}, {"_id": 1})
 
-        result = list(self.client[dataset][ANNOTATION_COLLECTION].aggregate(pipeline))
-        if not result:
+        if not (scheme_id and session_id and role_id and annotator_id):
             return {}
-        return result[0]
+
+        query = {
+            "session_id": session_id["_id"],
+            "annotator_id": annotator_id["_id"],
+            "role_id": role_id["_id"],
+            "scheme_id": scheme_id["_id"],
+        }
+
+        # projected reads (e.g. existence check in save) only need annotation fields -
+        # skip the data/scheme document fetches entirely
+        if project is not None:
+            anno = db[ANNOTATION_COLLECTION].find_one(query, project)
+            if not anno:
+                return {}
+            return anno
+
+        anno = db[ANNOTATION_COLLECTION].find_one(query)
+        if not anno or not anno.get("data_id"):
+            return {}
+
+        # fetch the annotation data payload only for the matched annotation
+        data_doc = db[ANNOTATION_DATA_COLLECTION].find_one({"_id": anno["data_id"]})
+        if not data_doc:
+            # orphaned annotation (no data) - treat as not found for consistent
+            # FileNotFoundError handling upstream
+            return {}
+
+        # fetch the full scheme document (by id, indexed) only on the non-projected path
+        scheme_doc = db[SCHEME_COLLECTION].find_one({"_id": scheme_id["_id"]})
+        if not scheme_doc:
+            # scheme deleted after name->id resolution (inconsistent DB) - treat as
+            # not found so callers raise FileNotFoundError instead of crashing
+            return {}
+
+        # reproduce the previous aggregate output shape for the caller
+        anno["data"] = [data_doc]
+        anno["scheme"] = [scheme_doc]
+        return anno
 
     def _load_scheme(self, dataset: str, scheme: str) -> dict:
         result = self.client[dataset][SCHEME_COLLECTION].find_one({"name": scheme})

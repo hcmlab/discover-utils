@@ -541,6 +541,10 @@ class AnnotationHandler(IHandler, NovaDBHandler):
 
         # fetch the full scheme document (by id, indexed) only on the non-projected path
         scheme_doc = db[SCHEME_COLLECTION].find_one({"_id": scheme_id["_id"]})
+        if not scheme_doc:
+            # scheme deleted after name->id resolution (inconsistent DB) - treat as
+            # not found so callers raise FileNotFoundError instead of crashing
+            return {}
 
         # reproduce the previous aggregate output shape for the caller
         anno["data"] = [data_doc]

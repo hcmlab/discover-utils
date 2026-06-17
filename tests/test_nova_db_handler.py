@@ -247,6 +247,39 @@ class TestLoadAnnotationOptimized:
         assert "data" not in result and "scheme" not in result
         assert result == {"_id": "anno1", "isLocked": False, "data_id": "data1"}
 
+    def test_missing_data_doc_returns_empty(self):
+        handler, client, collections, db = _make_handler(AnnotationHandler)
+        self._seed_ids(collections)
+        collections.setdefault(ANNOTATION_COLLECTION, MagicMock()).find_one.return_value = {
+            "_id": "anno1", "data_id": "data1"
+        }
+        collections.setdefault(ANNOTATION_DATA_COLLECTION, MagicMock()).find_one.return_value = None
+
+        result = handler._load_annotation("ds", "sess", "ann", "role", "scheme")
+        assert result == {}
+
+    def test_missing_data_id_returns_empty(self):
+        handler, client, collections, db = _make_handler(AnnotationHandler)
+        self._seed_ids(collections)
+        # annotation present but data_id missing/null -> no KeyError, returns {}
+        collections.setdefault(ANNOTATION_COLLECTION, MagicMock()).find_one.return_value = {"_id": "anno1"}
+
+        result = handler._load_annotation("ds", "sess", "ann", "role", "scheme")
+        assert result == {}
+
+    def test_missing_scheme_doc_returns_empty(self):
+        handler, client, collections, db = _make_handler(AnnotationHandler)
+        self._seed_ids(collections)
+        # scheme id resolves, but the full scheme doc was deleted afterwards
+        collections[SCHEME_COLLECTION].find_one.side_effect = [{"_id": "scheme1"}, None]
+        collections.setdefault(ANNOTATION_COLLECTION, MagicMock()).find_one.return_value = {
+            "_id": "anno1", "data_id": "data1"
+        }
+        collections.setdefault(ANNOTATION_DATA_COLLECTION, MagicMock()).find_one.return_value = {"_id": "data1"}
+
+        result = handler._load_annotation("ds", "sess", "ann", "role", "scheme")
+        assert result == {}
+
     def test_missing_name_returns_empty(self):
         handler, client, collections, db = _make_handler(AnnotationHandler)
         self._seed_ids(collections)

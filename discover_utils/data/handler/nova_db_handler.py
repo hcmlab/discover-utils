@@ -337,11 +337,27 @@ class NovaDBHandler:
                 return []
             pipeline.append({"$match": {"session_id": session_doc["_id"]}})
 
+        def name_lookup(from_coll, local_field, as_field):
+            # $lookup pipeline form: project only `name` inside the join so the
+            # (potentially large) joined documents - e.g. a scheme's labels/attributes -
+            # are never pulled, keeping this query metadata-only.
+            return {
+                "$lookup": {
+                    "from": from_coll,
+                    "let": {"fid": f"${local_field}"},
+                    "pipeline": [
+                        {"$match": {"$expr": {"$eq": ["$_id", "$$fid"]}}},
+                        {"$project": {"name": 1, "_id": 0}},
+                    ],
+                    "as": as_field,
+                }
+            }
+
         pipeline += [
-            {"$lookup": {"from": SESSION_COLLECTION, "localField": "session_id", "foreignField": "_id", "as": "session"}},
-            {"$lookup": {"from": ANNOTATOR_COLLECTION, "localField": "annotator_id", "foreignField": "_id", "as": "annotator"}},
-            {"$lookup": {"from": ROLE_COLLECTION, "localField": "role_id", "foreignField": "_id", "as": "role"}},
-            {"$lookup": {"from": SCHEME_COLLECTION, "localField": "scheme_id", "foreignField": "_id", "as": "scheme"}},
+            name_lookup(SESSION_COLLECTION, "session_id", "session"),
+            name_lookup(ANNOTATOR_COLLECTION, "annotator_id", "annotator"),
+            name_lookup(ROLE_COLLECTION, "role_id", "role"),
+            name_lookup(SCHEME_COLLECTION, "scheme_id", "scheme"),
         ]
         pipeline.append(
             {

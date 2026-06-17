@@ -160,9 +160,13 @@ class TestListAnnotations:
         result = handler.list_annotations("ds")
 
         pipeline = self._pipeline_of(collections)
-        lookups = [s["$lookup"]["from"] for s in pipeline if "$lookup" in s]
+        lookup_stages = [s["$lookup"] for s in pipeline if "$lookup" in s]
+        lookups = [s["from"] for s in lookup_stages]
         assert lookups == [SESSION_COLLECTION, ANNOTATOR_COLLECTION, ROLE_COLLECTION, SCHEME_COLLECTION]
         assert ANNOTATION_DATA_COLLECTION not in lookups  # the lazy-load win
+        # each join projects only `name` so large payloads (e.g. scheme labels) aren't pulled
+        for s in lookup_stages:
+            assert s["pipeline"][-1] == {"$project": {"name": 1, "_id": 0}}
         # no session filter -> no $match stage
         assert not any("$match" in s for s in pipeline)
         assert result[0]["scheme"] == "sc"

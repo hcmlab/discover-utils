@@ -4,7 +4,7 @@ Mock-based (unittest.mock), matching the style of test_file_uri_resolution.py. T
 validate the *call shape* of the queries (which collection, which field/projection/pipeline,
 how results are mapped) - they do not exercise real MongoDB semantics. Equivalence of the
 optimized _load_annotation against the old aggregate pipeline is verified manually against a
-real database (see plan).
+real database.
 """
 
 from unittest.mock import MagicMock
@@ -27,8 +27,8 @@ from discover_utils.data.handler.nova_db_handler import (
 def _make_handler(handler_cls=NovaDBHandler):
     """Build a handler whose client[dataset][collection] returns a stable per-collection mock.
 
-    Returns (handler, client, collections) where `collections` is a dict lazily populated
-    with one MagicMock per collection name accessed.
+    Returns (handler, client, collections, db) where `collections` is a dict lazily populated
+    with one MagicMock per collection name accessed and `db` is the client[dataset] mock.
     """
     handler = handler_cls()
     collections = {}
@@ -200,8 +200,10 @@ class TestLoadAnnotationOptimized:
 
         result = handler._load_annotation("ds", "sess", "ann", "role", "scheme")
 
-        # names resolved by indexed find_one on the right collections
-        collections[SCHEME_COLLECTION].find_one.assert_called_with({"name": "scheme"})
+        # names resolved by indexed find_one on the right collections (ids only)
+        collections[SCHEME_COLLECTION].find_one.assert_any_call({"name": "scheme"}, {"_id": 1})
+        # full scheme doc fetched by id on the non-projected path
+        collections[SCHEME_COLLECTION].find_one.assert_any_call({"_id": "scheme1"})
         collections[SESSION_COLLECTION].find_one.assert_called_with({"name": "sess"}, {"_id": 1})
         collections[ROLE_COLLECTION].find_one.assert_called_with({"name": "role"}, {"_id": 1})
         collections[ANNOTATOR_COLLECTION].find_one.assert_called_with({"name": "ann"}, {"_id": 1})

@@ -493,26 +493,27 @@ class AnnotationHandler(IHandler, NovaDBHandler):
             large ``AnnotationData`` payload is only read for the matched annotation.
             Mirrors the id-resolution pattern used in ``save``.
         """
-        db = self.client[dataset]
+        db = self._require_client()[dataset]
 
-        # resolve names -> ids (indexed single-document lookups)
-        scheme_doc = db[SCHEME_COLLECTION].find_one({"name": scheme})
+        # resolve names -> ids (indexed single-document lookups, ids only)
+        scheme_id = db[SCHEME_COLLECTION].find_one({"name": scheme}, {"_id": 1})
         session_id = db[SESSION_COLLECTION].find_one({"name": session}, {"_id": 1})
         role_id = db[ROLE_COLLECTION].find_one({"name": role}, {"_id": 1})
         annotator_id = db[ANNOTATOR_COLLECTION].find_one({"name": annotator}, {"_id": 1})
 
-        if not (scheme_doc and session_id and role_id and annotator_id):
+        if not (scheme_id and session_id and role_id and annotator_id):
             return {}
 
         query = {
             "session_id": session_id["_id"],
             "annotator_id": annotator_id["_id"],
             "role_id": role_id["_id"],
-            "scheme_id": scheme_doc["_id"],
+            "scheme_id": scheme_id["_id"],
         }
 
-        # projected reads (e.g. existence check in save) only need annotation fields
-        if project:
+        # projected reads (e.g. existence check in save) only need annotation fields -
+        # skip the data/scheme document fetches entirely
+        if project is not None:
             anno = db[ANNOTATION_COLLECTION].find_one(query, project)
             if not anno:
                 return {}
@@ -524,6 +525,13 @@ class AnnotationHandler(IHandler, NovaDBHandler):
 
         # fetch the annotation data payload only for the matched annotation
         data_doc = db[ANNOTATION_DATA_COLLECTION].find_one({"_id": anno["data_id"]})
+        if not data_doc:
+            # orphaned annotation (no data) - treat as not found for consistent
+            # FileNotFoundError handling upstream
+            return {}
+
+        # fetch the full scheme document (by id, indexed) only on the non-projected path
+        scheme_doc = db[SCHEME_COLLECTION].find_one({"_id": scheme_id["_id"]})
 
         # reproduce the previous aggregate output shape for the caller
         anno["data"] = [data_doc]

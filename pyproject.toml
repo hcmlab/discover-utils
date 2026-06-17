@@ -43,6 +43,7 @@ dynamic = ["version"]
 decord = ["eva-decord >= 0.6.1"]
 pymovie = ["pymovie"]
 pyav = ["pyav"]
+test = ["pytest"]
 
 
 
